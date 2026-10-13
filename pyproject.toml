@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gitmcp"
+version = "0.1.0"
+description = "GitMCP: a GitHub MCP (Model Context Protocol) server exposing validated, read-first GitHub tools."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "mcp>=2.3,<3",
+    "httpx>=0.28,<1",
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.5,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "respx>=0.22",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[project.scripts]
+gitmcp = "gitmcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gitmcp"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra"
+markers = ["integration: talks to the real GitHub API; needs GITMCP_TEST_TOKEN and GITMCP_TEST_REPO"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["RUF012"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501", "B017"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["src"]
