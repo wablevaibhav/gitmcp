@@ -34,19 +34,40 @@ flowchart LR
 | `errors.py` | Typed exceptions with safe messages and hints |
 | `logging_utils.py` | stderr logging with secret redaction |
 
-## Prerequisites and installation
+## Quick start
 
-Python 3.11 or newer and Git.
+Requires **Python 3.11+**. Repository: <https://github.com/wablevaibhav/gitmcp>
 
 ```bash
+python -m pip install git+https://github.com/wablevaibhav/gitmcp
+python -m gitmcp          # starts the server (waits silently for an MCP client)
+```
+
+Then connect it to your AI client: see [Claude Code](#claude-code) or [Claude Desktop](#claude-desktop).
+You do not need to clone the repository to *use* GitMCP.
+
+To upgrade later:
+
+```bash
+python -m pip install --upgrade --force-reinstall git+https://github.com/wablevaibhav/gitmcp
+```
+
+Alternatives (not required): `pipx install git+https://github.com/wablevaibhav/gitmcp`, or with
+[uv](https://docs.astral.sh/uv/): `uvx --from git+https://github.com/wablevaibhav/gitmcp gitmcp`.
+
+### Development install (contributors)
+
+```bash
+git clone https://github.com/wablevaibhav/gitmcp.git
+cd gitmcp
 python -m venv .venv
 # Windows (PowerShell):  .venv\Scripts\Activate.ps1
 # macOS / Linux:         source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-`requirements-lock.txt` pins the exact versions the project was tested with (`pip install -r requirements-lock.txt`
-then `pip install -e . --no-deps`).
+`requirements-lock.txt` pins the exact versions the project was tested with
+(`pip install -r requirements-lock.txt`, then `pip install -e . --no-deps`).
 
 ## GitHub token setup
 
@@ -93,38 +114,48 @@ Environment variables (or a `.env` file in the working directory; copy `.env.exa
 ## Running the server
 
 ```bash
-python -m gitmcp          # or: gitmcp
+python -m gitmcp          # or simply: gitmcp
 ```
 
-It speaks MCP over stdio, so on its own it waits silently for a client. To confirm it is discoverable and
-callable with a real MCP client over stdio:
+The server speaks MCP over **stdio**, so on its own it prints a "ready" line to stderr and waits. It is meant
+to be launched by an MCP client. To confirm it is discoverable and callable using a real MCP stdio client
+(from a clone of this repo):
 
 ```bash
 python scripts/verify_tools.py                       # lists the tools
 python scripts/verify_tools.py octocat/Hello-World   # also calls github_get_repository
 ```
 
+> **Keep your token secret.** Never paste it into chats, issues, screenshots or commit it. If a token is ever
+> exposed, revoke it immediately at <https://github.com/settings/personal-access-tokens> and create a new one.
+
 ### Claude Code
 
-Use the absolute path of the virtualenv's Python so it works from any directory.
+**macOS / Linux / Git Bash:**
 
 ```bash
-claude mcp add gitmcp --scope user -e GITHUB_TOKEN=github_pat_xxx -- /abs/path/to/gitmcp/.venv/bin/python -m gitmcp
+claude mcp add gitmcp --scope user -e GITHUB_TOKEN="$GITHUB_TOKEN" -- python -m gitmcp
 ```
 
-Windows example (`.venv\Scripts\python.exe`):
+**Windows PowerShell** (Windows PowerShell 5.1 swallows the `--` separator, so run through `cmd`):
 
-```bash
-claude mcp add gitmcp --scope user -e GITHUB_TOKEN=github_pat_xxx -- C:\path\to\gitmcp\.venv\Scripts\python.exe -m gitmcp
+```powershell
+$env:GITHUB_TOKEN = "your-token"       # type it in your own terminal only
+cmd /c "claude mcp add gitmcp --scope user -e GITHUB_TOKEN=%GITHUB_TOKEN% -- python -m gitmcp"
 ```
 
-Or commit a project `.mcp.json` (reference the token from your environment; never write it into the file):
+Verify with `claude mcp list` (or `/mcp` inside Claude Code). If `python` is not the interpreter you installed
+GitMCP into, use its full path (`where python` / `which python`), e.g.
+`C:\Users\you\AppData\Local\Programs\Python\Python312\python.exe`.
+
+You can also share a project-level `.mcp.json`, referencing each person's own environment variable (never
+write the token into the file):
 
 ```json
 {
   "mcpServers": {
     "gitmcp": {
-      "command": "/abs/path/to/gitmcp/.venv/bin/python",
+      "command": "python",
       "args": ["-m", "gitmcp"],
       "env": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" }
     }
@@ -134,17 +165,17 @@ Or commit a project `.mcp.json` (reference the token from your environment; neve
 
 ### Claude Desktop
 
-Edit `claude_desktop_config.json` (Windows: `%APPDATA%\Claude\`, macOS: `~/Library/Application Support/Claude/`),
-then restart Claude Desktop:
+Edit `claude_desktop_config.json` (Windows: `%APPDATA%\Claude\`, macOS:
+`~/Library/Application Support/Claude/`), then restart Claude Desktop:
 
 ```json
 {
   "mcpServers": {
     "gitmcp": {
-      "command": "C:\\path\\to\\gitmcp\\.venv\\Scripts\\python.exe",
+      "command": "python",
       "args": ["-m", "gitmcp"],
       "env": {
-        "GITHUB_TOKEN": "github_pat_xxx",
+        "GITHUB_TOKEN": "your-token",
         "GITHUB_ENABLE_WRITE_TOOLS": "false"
       }
     }
@@ -152,10 +183,23 @@ then restart Claude Desktop:
 }
 ```
 
-> Installing the package does **not** make the server appear in a client; the client must be configured as
-> above. The command and server were verified with `scripts/verify_tools.py` (a real MCP stdio client). The
-> Claude Code / Desktop configuration snippets follow those products' documented formats but were not
-> exercised inside those applications as part of this repo's tests.
+If Claude Desktop cannot find `python`, set `command` to the full interpreter path, with doubled backslashes
+on Windows (`"C:\\Users\\you\\AppData\\Local\\Programs\\Python\\Python312\\python.exe"`).
+
+### Using it with others
+
+Each person runs their own local copy; no server is shared and tokens are never shared. Everyone does:
+
+1. `python -m pip install git+https://github.com/wablevaibhav/gitmcp`
+2. Creates **their own** fine-grained GitHub token (see below).
+3. Adds the server to their client using one of the configurations above.
+
+Public repositories work without a token (60 requests/hour); private repositories, code search and write
+tools require one.
+
+> Installing the package does not make the server appear in a client by itself; the client must be configured
+> as above. The server and command were verified with `scripts/verify_tools.py` (a real MCP stdio client). The
+> Claude Code / Desktop snippets follow those products' documented formats.
 
 ## Tools
 
@@ -229,6 +273,8 @@ Clients receive `ErrorType: message Hint: ...`. Tracebacks, response bodies and 
 
 ## Development
 
+From a development install:
+
 ```bash
 pytest                       # unit + MCP tests (no token, no network)
 ruff check . && ruff format --check .
@@ -245,7 +291,9 @@ GITMCP_TEST_TOKEN=github_pat_xxx GITMCP_TEST_REPO=owner/repo pytest -m integrati
 
 | Symptom | Likely cause / fix |
 |---|---|
-| Client shows no tools | Wrong Python path in client config. Run `python scripts/verify_tools.py` using that exact interpreter |
+| Client shows no tools | Wrong Python in client config. Run `python -m gitmcp` with that exact interpreter; use its full path in the config |
+| `error: unknown option '-m'` (PowerShell) | PowerShell 5.1 drops `--`. Use the `cmd /c "claude mcp add ..."` form above |
+| `No module named gitmcp` | Installed into a different Python/venv than the one the client launches |
 | `NotFoundError` on a repo you can open in a browser | Private repo and missing/under-scoped token |
 | `AuthorizationError` | Token lacks the permission in the table above or the repo isn't selected for the token |
 | `RateLimitError` immediately | Reset is further away than `GITHUB_MAX_RATE_LIMIT_WAIT`; set a token or wait |
