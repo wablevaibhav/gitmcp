@@ -1,12 +1,41 @@
 # GitMCP
 
-A [Model Context Protocol](https://modelcontextprotocol.io) server that lets AI assistants explore GitHub
-repositories, source code, issues, pull requests and commits through 14 validated, read-only tools,
-plus 4 opt-in write tools that are **off by default**.
+**A GitHub server for AI assistants: lets Claude and other MCP clients read repositories, issues, pull requests
+and commits through validated tools, with writes disabled unless you opt in.**
 
-- Python 3.11+, official `mcp` SDK (v2, `MCPServer`), `httpx`, Pydantic v2, `pydantic-settings`
-- stdio transport; logs go to stderr, stdout carries only MCP protocol messages
-- Bounded retries with backoff/jitter, rate-limit awareness, response-size limits, token redaction
+[![Release](https://img.shields.io/github/v/release/wablevaibhav/gitmcp)](https://github.com/wablevaibhav/gitmcp/releases)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![Tests](https://img.shields.io/badge/tests-112%20passing-brightgreen)
+
+- 14 read-only tools plus 4 opt-in write tools, each with a strict Pydantic input schema
+- Transient failures (429, 5xx, timeouts) are retried within a hard budget; auth, permission and 404 errors never are
+- Safe by default: writes off, token never logged or returned, response sizes capped, no arbitrary URL/shell access
+- Works with Claude Code and Claude Desktop over stdio; public repos need no token
+
+> **Honest expectations:** stdio only, so each user runs their own local copy. Code search and private
+> repositories need a GitHub token. File reads are UTF-8 text only.
+
+## What I built
+
+GitMCP is a Python MCP server that adapts the GitHub REST API into 18 tools an AI assistant can discover and
+call. The GitHub logic (`github/*.py`) is independent of MCP, so it is tested without a running server; a thin
+`server.py` registers the tools and turns every failure into a short, safe, actionable message. It was
+built against the current official MCP Python SDK (2.x) and verified with a real MCP stdio client.
+
+## Results at a glance
+
+Measured on a Windows 11 laptop, Python 3.14, anonymous (no token) against the live GitHub API.
+
+| Metric | Result |
+| ------ | ------ |
+| Automated tests | 112 passing, 1 skipped (live integration test, needs a token), ~13 s |
+| Lint / types | `ruff` clean, `mypy --strict` clean (18 source files) |
+| Cold start: spawn process, MCP handshake, list 14 tools | 1.3 s |
+| `github_get_repository` latency | 0.6 s first call (TLS setup), ~0.02 s median on reused connection |
+| Code size | ~2,100 lines in `src/`, ~1,400 lines of tests |
+
+Latency is dominated by GitHub and the network, not by the server. Design trade-offs are in
+[DECISIONS.md](DECISIONS.md).
 
 ## Architecture
 
@@ -33,6 +62,8 @@ flowchart LR
 | `schemas/` | Strict Pydantic input models (`extra="forbid"`) and output models |
 | `errors.py` | Typed exceptions with safe messages and hints |
 | `logging_utils.py` | stderr logging with secret redaction |
+
+Why it is built this way: see [DECISIONS.md](DECISIONS.md).
 
 ## Quick start
 
@@ -200,6 +231,33 @@ tools require one.
 > Installing the package does not make the server appear in a client by itself; the client must be configured
 > as above. The server and command were verified with `scripts/verify_tools.py` (a real MCP stdio client). The
 > Claude Code / Desktop snippets follow those products' documented formats.
+
+## Usage
+
+Real output from `python scripts/verify_tools.py octocat/Hello-World` (an MCP client talking to the server
+over stdio, no token):
+
+```text
+Connected. 14 tools:
+  - github_search_repositories
+  - github_get_repository
+  - github_list_repository_contents
+  - github_get_file_contents
+  ...
+is_error: False
+{'full_name': 'octocat/Hello-World', 'owner': 'octocat', 'name': 'Hello-World',
+ 'visibility': 'public', 'stars': 3842, 'default_branch': 'master', ...}
+```
+
+Errors are short, typed and actionable (real output, anonymous):
+
+```text
+github_get_repository  -> NotFoundError: Resource not found. Hint: Check owner, repo, path and ref.
+                          Private resources also return 404 when the token lacks access.
+                          No GITHUB_TOKEN is configured, so only public data is visible.
+github_search_code     -> AuthenticationError: GitHub code search requires authentication.
+                          Hint: Set GITHUB_TOKEN, and scope the query with repo:, org: or user:.
+```
 
 ## Tools
 
