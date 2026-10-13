@@ -3,7 +3,7 @@
 **A GitHub server for AI assistants: lets Claude and other MCP clients read repositories, issues, pull requests
 and commits through validated tools, with writes disabled unless you opt in.**
 
-[![Release](https://img.shields.io/github/v/release/wablevaibhav/gitmcp)](https://github.com/wablevaibhav/gitmcp/releases)
+[![Release](https://img.shields.io/github/v/release/wablevaibhav/gitmcp)](https://github.com/wablevaibhav/gitmcp/releases#release-v0.1.0)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![Tests](https://img.shields.io/badge/tests-112%20passing-brightgreen)
 
@@ -76,6 +76,13 @@ python -m gitmcp          # starts the server (waits silently for an MCP client)
 
 Then connect it to your AI client: see [Claude Code](#claude-code) or [Claude Desktop](#claude-desktop).
 You do not need to clone the repository to *use* GitMCP.
+
+**Latest release:** [v0.1.0](https://github.com/wablevaibhav/gitmcp/releases#release-v0.1.0). To install exactly
+that version:
+
+```bash
+python -m pip install git+https://github.com/wablevaibhav/gitmcp@v0.1.0
+```
 
 To upgrade later:
 
