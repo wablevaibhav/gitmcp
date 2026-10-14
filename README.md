@@ -6,6 +6,7 @@ and commits through validated tools, with writes disabled unless you opt in.**
 [![Release](https://img.shields.io/github/v/release/wablevaibhav/gitmcp?display_name=tag&cacheSeconds=300)](https://github.com/wablevaibhav/gitmcp/releases#release-v0.1.0)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![Tests](https://img.shields.io/badge/tests-112%20passing-brightgreen)
+[![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/wablevaibhav/gitmcp)
 
 - 14 read-only tools plus 4 opt-in write tools, each with a strict Pydantic input schema
 - Transient failures (429, 5xx, timeouts) are retried within a hard budget; auth, permission and 404 errors never are
